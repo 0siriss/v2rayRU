@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name" translatable="false">v2rayNG</string>
+    <string name="app_name" translatable="false">v2rayRU</string>
     <string name="app_widget_name">Switch</string>
     <string name="app_tile_name">Switch</string>
     <string name="app_tile_first_use">First use of this feature, please use the app to add server</string>
@@ -222,10 +222,12 @@
 
     <string name="title_pref_socks_port">Local proxy port</string>
     <string name="summary_pref_socks_port">Local proxy port</string>
-    <string name="title_pref_socks_username">Local proxy username (optional)</string>
-    <string name="summary_pref_socks_username">Username</string>
-    <string name="title_pref_socks_password">Local proxy password (optional)</string>
-    <string name="summary_pref_socks_password">Password</string>
+    <string name="title_pref_socks_auto_secure">Auto-secure local proxy</string>
+    <string name="summary_pref_socks_auto_secure">Randomize port and credentials on each connection (recommended)</string>
+    <string name="title_pref_socks_username">Local proxy username</string>
+    <string name="summary_pref_socks_username">Username (used when auto-secure is off)</string>
+    <string name="title_pref_socks_password">Local proxy password</string>
+    <string name="summary_pref_socks_password">Password (used when auto-secure is off)</string>
 
     <string name="title_pref_local_dns_port">Local DNS port</string>
     <string name="summary_pref_local_dns_port">Local DNS port</string>

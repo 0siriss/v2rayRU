@@ -157,6 +157,12 @@
             android:summary="10808"
             android:title="@string/title_pref_socks_port" />
 
+        <androidx.preference.SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="pref_socks_auto_secure"
+            android:summary="@string/summary_pref_socks_auto_secure"
+            android:title="@string/title_pref_socks_auto_secure" />
+
         <EditTextPreference
             android:key="pref_socks_username"
             android:summary="@string/summary_pref_socks_username"

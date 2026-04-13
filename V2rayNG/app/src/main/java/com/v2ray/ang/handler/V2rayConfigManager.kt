@@ -372,9 +372,9 @@ object V2rayConfigManager {
      */
     private fun getInbounds(v2rayConfig: V2rayConfig): Boolean {
         try {
-            val socksPort = SettingsManager.getSocksPort()
-            val socksUsername = SettingsManager.getSocksUsername()
-            val socksPassword = SettingsManager.getSocksPassword()
+            val socksPort = SettingsManager.getEffectiveSocksPort()
+            val socksUsername = SettingsManager.getEffectiveSocksUsername()
+            val socksPassword = SettingsManager.getEffectiveSocksPassword()
             val inbound1 = v2rayConfig.inbounds[0]
             if (inbound1.settings == null) {
                 inbound1.settings = V2rayConfig.InboundBean.InSettingsBean()

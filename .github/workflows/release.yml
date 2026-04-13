@@ -1,0 +1,181 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: 'Create GitHub Release'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: '0'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4.0.1
+        with:
+          log-accepted-android-sdk-licenses: false
+          cmdline-tools-version: '13114758'
+          packages: 'platforms;android-36 build-tools;36.0.0 platform-tools'
+
+      - name: Install NDK
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager \
+            --channel=0 \
+            --install "ndk;28.2.13676358"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> $GITHUB_ENV
+          sed -i '10i\
+          \
+              ndkVersion = "28.2.13676358"' ${{ github.workspace }}/V2rayNG/app/build.gradle.kts
+
+      - name: Restore cached libhevtun
+        id: cache-libhevtun-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ github.workspace }}/libs
+          key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles('.git/modules/hev-socks5-tunnel/HEAD') }}-${{ hashFiles('compile-hevtun.sh') }}
+
+      - name: Build libhevtun
+        if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
+        run: bash compile-hevtun.sh
+
+      - name: Save libhevtun cache
+        if: steps.cache-libhevtun-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/libs
+          key: libhevtun-${{ runner.os }}-${{ env.NDK_HOME }}-${{ hashFiles('.git/modules/hev-socks5-tunnel/HEAD') }}-${{ hashFiles('compile-hevtun.sh') }}
+
+      - name: Copy libhevtun
+        run: cp -r ${{ github.workspace }}/libs ${{ github.workspace }}/V2rayNG/app
+
+      - name: Fetch AndroidLibXrayLite tag
+        run: |
+          pushd AndroidLibXrayLite
+          CURRENT_TAG=$(git describe --tags --abbrev=0)
+          echo "CURRENT_TAG=$CURRENT_TAG" >> $GITHUB_ENV
+          popd
+
+      - name: Download libv2ray
+        uses: robinraju/release-downloader@v1.12
+        with:
+          repository: '2dust/AndroidLibXrayLite'
+          tag: ${{ env.CURRENT_TAG }}
+          fileName: 'libv2ray.aar'
+          out-file-path: V2rayNG/app/libs/
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Decode Keystore
+        id: android_keystore
+        if: ${{ secrets.APP_KEYSTORE_BASE64 != '' }}
+        uses: timheuer/base64-to-file@v1.2.4
+        with:
+          fileName: "android_keystore.jks"
+          encodedString: ${{ secrets.APP_KEYSTORE_BASE64 }}
+
+      - name: Build APK (signed)
+        if: ${{ secrets.APP_KEYSTORE_BASE64 != '' }}
+        run: |
+          cd ${{ github.workspace }}/V2rayNG
+          echo "sdk.dir=${ANDROID_HOME}" > local.properties
+          chmod 755 gradlew
+          ./gradlew licenseFdroidReleaseReport
+          ./gradlew assemblePlaystoreRelease \
+            -Pandroid.injected.signing.store.file=${{ steps.android_keystore.outputs.filePath }} \
+            -Pandroid.injected.signing.store.password=${{ secrets.APP_KEYSTORE_PASSWORD }} \
+            -Pandroid.injected.signing.key.alias=${{ secrets.APP_KEYSTORE_ALIAS }} \
+            -Pandroid.injected.signing.key.password=${{ secrets.APP_KEY_PASSWORD }}
+
+      - name: Build APK (unsigned)
+        if: ${{ secrets.APP_KEYSTORE_BASE64 == '' }}
+        run: |
+          cd ${{ github.workspace }}/V2rayNG
+          echo "sdk.dir=${ANDROID_HOME}" > local.properties
+          chmod 755 gradlew
+          ./gradlew licenseFdroidReleaseReport
+          ./gradlew assemblePlaystoreRelease
+
+      - name: Upload arm64-v8a APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2rayRU-arm64-v8a
+          path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*arm64-v8a*.apk
+
+      - name: Upload armeabi-v7a APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2rayRU-armeabi-v7a
+          path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*armeabi-v7a*.apk
+
+      - name: Upload x86_64 APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2rayRU-x86_64
+          path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*x86_64*.apk
+
+      - name: Upload universal APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2rayRU-universal
+          path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*universal*.apk
+
+      - name: Get version name
+        id: version
+        run: |
+          VERSION=$(grep 'versionName' ${{ github.workspace }}/V2rayNG/app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          # Use tag name if triggered by tag, otherwise use version from gradle
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "release_tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "release_tag=v${VERSION}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        if: ${{ github.ref_type == 'tag' || inputs.create_release == true }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.release_tag }}
+          name: v2rayRU ${{ steps.version.outputs.release_tag }}
+          body: |
+            ## v2rayRU ${{ steps.version.outputs.release_tag }}
+
+            Fork of [v2rayNG](https://github.com/2dust/v2rayNG) with:
+            - **Auto-secure local proxy**: random port + credentials on each connection
+            - Settings toggle: auto mode (default) or manual credentials
+
+            ### Download
+            Choose the APK for your device architecture:
+            - `arm64-v8a` — most modern Android devices (64-bit ARM)
+            - `armeabi-v7a` — older Android devices (32-bit ARM)
+            - `x86_64` — emulators / x86 devices
+            - `universal` — all architectures (larger size)
+
+            ### Based on
+            v2rayNG ${{ steps.version.outputs.version }} · xray-core ${{ env.CURRENT_TAG }}
+
+            ### License
+            GPL v3 — source code: https://github.com/${{ github.repository }}
+          draft: false
+          prerelease: false
+          files: |
+            ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*.apk

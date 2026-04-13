@@ -127,6 +127,8 @@ object V2RayServiceManager {
             context.toast(R.string.toast_services_start)
         }
 
+        SettingsManager.generateSessionCredentials()
+
         val isVpnMode = SettingsManager.isVpnMode()
         val intent = if (isVpnMode) {
             Log.i(AppConfig.TAG, "StartCore-Manager: Starting VPN service")
@@ -229,6 +231,8 @@ object V2RayServiceManager {
      */
     fun stopCoreLoop(): Boolean {
         val service = getService() ?: return false
+
+        SettingsManager.clearSessionCredentials()
 
         if (coreController.isRunning) {
             CoroutineScope(Dispatchers.IO).launch {

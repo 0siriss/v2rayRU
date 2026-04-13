@@ -60,6 +60,7 @@ object AppConfig {
     const val PREF_SOCKS_PORT = "pref_socks_port"
     const val PREF_SOCKS_USERNAME = "pref_socks_username"
     const val PREF_SOCKS_PASSWORD = "pref_socks_password"
+    const val PREF_SOCKS_AUTO_SECURE = "pref_socks_auto_secure"
     const val PREF_REMOTE_DNS = "pref_remote_dns"
     const val PREF_DOMESTIC_DNS = "pref_domestic_dns"
     const val PREF_DNS_HOSTS = "pref_dns_hosts"

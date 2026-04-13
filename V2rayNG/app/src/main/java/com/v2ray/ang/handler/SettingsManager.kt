@@ -284,6 +284,65 @@ object SettingsManager {
         return MmkvManager.decodeSettingsString(AppConfig.PREF_SOCKS_PASSWORD)?.trim()?.takeIf { it.isNotEmpty() }
     }
 
+    fun isAutoSecureEnabled(): Boolean {
+        return MmkvManager.decodeSettingsBool(AppConfig.PREF_SOCKS_AUTO_SECURE, true)
+    }
+
+    @Volatile
+    private var runtimeSocksPort: Int = 0
+    @Volatile
+    private var runtimeSocksUsername: String? = null
+    @Volatile
+    private var runtimeSocksPassword: String? = null
+
+    /** Generates random port + credentials and stores them for the current session. */
+    @Synchronized
+    fun generateSessionCredentials() {
+        if (!isAutoSecureEnabled()) {
+            runtimeSocksPort = 0
+            runtimeSocksUsername = null
+            runtimeSocksPassword = null
+            return
+        }
+        val rng = java.security.SecureRandom()
+        val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        fun randomString(len: Int) = (1..len).map { chars[rng.nextInt(chars.length)] }.joinToString("")
+        runtimeSocksUsername = randomString(12)
+        runtimeSocksPassword = randomString(16)
+        runtimeSocksPort = run {
+            repeat(10) {
+                val candidate = 49152 + rng.nextInt(16384)
+                try {
+                    java.net.ServerSocket(candidate, 0, java.net.InetAddress.getByName(AppConfig.LOOPBACK)).use {
+                        return@run candidate
+                    }
+                } catch (_: Exception) {}
+            }
+            getSocksPort()
+        }
+    }
+
+    /** Clears runtime session credentials on service stop. */
+    @Synchronized
+    fun clearSessionCredentials() {
+        runtimeSocksPort = 0
+        runtimeSocksUsername = null
+        runtimeSocksPassword = null
+    }
+
+    fun getEffectiveSocksPort(): Int {
+        val p = runtimeSocksPort
+        return if (isAutoSecureEnabled() && p > 0) p else getSocksPort()
+    }
+
+    fun getEffectiveSocksUsername(): String? {
+        return if (isAutoSecureEnabled()) runtimeSocksUsername else getSocksUsername()
+    }
+
+    fun getEffectiveSocksPassword(): String? {
+        return if (isAutoSecureEnabled()) runtimeSocksPassword else getSocksPassword()
+    }
+
     /**
      * Get the HTTP port.
      * @return The HTTP port.

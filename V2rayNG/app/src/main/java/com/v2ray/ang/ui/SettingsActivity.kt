@@ -56,6 +56,10 @@ class SettingsActivity : BaseActivity() {
         private val hevTunRwTimeout by lazy { findPreference<EditTextPreference>(AppConfig.PREF_HEV_TUNNEL_RW_TIMEOUT) }
         private val useHevTun by lazy { findPreference<CheckBoxPreference>(AppConfig.PREF_USE_HEV_TUNNEL) }
 
+        private val socksAutoSecure by lazy { findPreference<androidx.preference.SwitchPreferenceCompat>(AppConfig.PREF_SOCKS_AUTO_SECURE) }
+        private val socksUsername by lazy { findPreference<EditTextPreference>(AppConfig.PREF_SOCKS_USERNAME) }
+        private val socksPassword by lazy { findPreference<EditTextPreference>(AppConfig.PREF_SOCKS_PASSWORD) }
+
         override fun onCreatePreferences(bundle: Bundle?, s: String?) {
             // Use MMKV as the storage backend for all Preferences
             // This prevents inconsistencies between SharedPreferences and MMKV
@@ -110,6 +114,11 @@ class SettingsActivity : BaseActivity() {
 
             useHevTun?.setOnPreferenceChangeListener { _, newValue ->
                 updateHevTunSettings(newValue as Boolean)
+                true
+            }
+
+            socksAutoSecure?.setOnPreferenceChangeListener { _, newValue ->
+                updateSocksAutoSecure(newValue as Boolean)
                 true
             }
         }
@@ -175,6 +184,9 @@ class SettingsActivity : BaseActivity() {
 
             // Initialize auto-update interval state
             autoUpdateInterval?.isEnabled = MmkvManager.decodeSettingsBool(AppConfig.SUBSCRIPTION_AUTO_UPDATE, false)
+
+            // Initialize auto-secure socks state
+            updateSocksAutoSecure(MmkvManager.decodeSettingsBool(AppConfig.PREF_SOCKS_AUTO_SECURE, true))
         }
 
         private fun updateMode(value: String?) {
@@ -269,6 +281,11 @@ class SettingsActivity : BaseActivity() {
         private fun updateHevTunSettings(enabled: Boolean) {
             hevTunLogLevel?.isEnabled = enabled
             hevTunRwTimeout?.isEnabled = enabled
+        }
+
+        private fun updateSocksAutoSecure(autoEnabled: Boolean) {
+            socksUsername?.isEnabled = !autoEnabled
+            socksPassword?.isEnabled = !autoEnabled
         }
     }
 

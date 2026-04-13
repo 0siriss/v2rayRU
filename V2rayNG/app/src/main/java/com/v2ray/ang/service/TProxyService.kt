@@ -56,9 +56,9 @@ class TProxyService(
     }
 
     private fun buildConfig(): String {
-        val socksPort = SettingsManager.getSocksPort()
-        val socksUsername = SettingsManager.getSocksUsername()
-        val socksPassword = SettingsManager.getSocksPassword()
+        val socksPort = SettingsManager.getEffectiveSocksPort()
+        val socksUsername = SettingsManager.getEffectiveSocksUsername()
+        val socksPassword = SettingsManager.getEffectiveSocksPassword()
         val vpnConfig = SettingsManager.getCurrentVpnInterfaceAddressConfig()
         val escapedSocksUsername = socksUsername?.replace("'", "''")
         val escapedSocksPassword = socksPassword?.replace("'", "''")
