@@ -115,25 +115,25 @@ jobs:
           ./gradlew assemblePlaystoreRelease
 
       - name: Upload arm64-v8a APK as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2rayRU-arm64-v8a
           path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*arm64-v8a*.apk
 
       - name: Upload armeabi-v7a APK as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2rayRU-armeabi-v7a
           path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*armeabi-v7a*.apk
 
       - name: Upload x86_64 APK as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2rayRU-x86_64
           path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*x86_64*.apk
 
       - name: Upload universal APK as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: v2rayRU-universal
           path: ${{ github.workspace }}/V2rayNG/app/build/outputs/apk/*/release/*universal*.apk
