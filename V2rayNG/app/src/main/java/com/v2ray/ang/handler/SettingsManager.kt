@@ -288,28 +288,23 @@ object SettingsManager {
         return MmkvManager.decodeSettingsBool(AppConfig.PREF_SOCKS_AUTO_SECURE, true)
     }
 
-    @Volatile
-    private var runtimeSocksPort: Int = 0
-    @Volatile
-    private var runtimeSocksUsername: String? = null
-    @Volatile
-    private var runtimeSocksPassword: String? = null
-
-    /** Generates random port + credentials and stores them for the current session. */
-    @Synchronized
+    /**
+     * Generates random port + credentials and persists them to MMKV so that
+     * the service process (:RunSoLibV2RayDaemon) can read them via getEffective*().
+     */
     fun generateSessionCredentials() {
         if (!isAutoSecureEnabled()) {
-            runtimeSocksPort = 0
-            runtimeSocksUsername = null
-            runtimeSocksPassword = null
+            clearSessionCredentials()
             return
         }
         val rng = java.security.SecureRandom()
         val chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         fun randomString(len: Int) = (1..len).map { chars[rng.nextInt(chars.length)] }.joinToString("")
-        runtimeSocksUsername = randomString(12)
-        runtimeSocksPassword = randomString(16)
-        runtimeSocksPort = run {
+
+        MmkvManager.encodeSettings(AppConfig.PREF_SOCKS_SESSION_USERNAME, randomString(12))
+        MmkvManager.encodeSettings(AppConfig.PREF_SOCKS_SESSION_PASSWORD, randomString(16))
+
+        val port = run {
             repeat(10) {
                 val candidate = 49152 + rng.nextInt(16384)
                 try {
@@ -320,27 +315,34 @@ object SettingsManager {
             }
             getSocksPort()
         }
+        MmkvManager.encodeSettings(AppConfig.PREF_SOCKS_SESSION_PORT, port.toString())
     }
 
-    /** Clears runtime session credentials on service stop. */
-    @Synchronized
+    /** Clears session credentials on service stop. */
     fun clearSessionCredentials() {
-        runtimeSocksPort = 0
-        runtimeSocksUsername = null
-        runtimeSocksPassword = null
+        MmkvManager.encodeSettings(AppConfig.PREF_SOCKS_SESSION_USERNAME, "")
+        MmkvManager.encodeSettings(AppConfig.PREF_SOCKS_SESSION_PASSWORD, "")
+        MmkvManager.encodeSettings(AppConfig.PREF_SOCKS_SESSION_PORT, "0")
     }
 
     fun getEffectiveSocksPort(): Int {
-        val p = runtimeSocksPort
-        return if (isAutoSecureEnabled() && p > 0) p else getSocksPort()
+        if (!isAutoSecureEnabled()) return getSocksPort()
+        val p = Utils.parseInt(MmkvManager.decodeSettingsString(AppConfig.PREF_SOCKS_SESSION_PORT), 0)
+        return if (p > 0) p else getSocksPort()
     }
 
     fun getEffectiveSocksUsername(): String? {
-        return if (isAutoSecureEnabled()) runtimeSocksUsername else getSocksUsername()
+        return if (isAutoSecureEnabled())
+            MmkvManager.decodeSettingsString(AppConfig.PREF_SOCKS_SESSION_USERNAME)?.takeIf { it.isNotEmpty() }
+        else
+            getSocksUsername()
     }
 
     fun getEffectiveSocksPassword(): String? {
-        return if (isAutoSecureEnabled()) runtimeSocksPassword else getSocksPassword()
+        return if (isAutoSecureEnabled())
+            MmkvManager.decodeSettingsString(AppConfig.PREF_SOCKS_SESSION_PASSWORD)?.takeIf { it.isNotEmpty() }
+        else
+            getSocksPassword()
     }
 
     /**
@@ -348,7 +350,7 @@ object SettingsManager {
      * @return The HTTP port.
      */
     fun getHttpPort(): Int {
-        return getSocksPort() + if (Utils.isXray()) 0 else 1
+        return getEffectiveSocksPort() + if (Utils.isXray()) 0 else 1
     }
 
     /**
