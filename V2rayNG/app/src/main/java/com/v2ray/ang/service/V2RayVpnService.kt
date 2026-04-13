@@ -274,7 +274,12 @@ class V2RayVpnService : VpnService(), ServiceControl {
         // Android Q (API 29) and above: Configure metering and HTTP proxy
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             builder.setMetered(false)
-            if (MmkvManager.decodeSettingsBool(AppConfig.PREF_APPEND_HTTP_PROXY)) {
+            // Only set system HTTP proxy when SOCKS5 auth is disabled.
+            // With auth enabled the browser would receive 407 and prompt the user
+            // for credentials — in VPN mode traffic already flows through the tunnel
+            // so the system proxy hint is not needed.
+            val proxyAuthActive = SettingsManager.getEffectiveSocksUsername() != null
+            if (MmkvManager.decodeSettingsBool(AppConfig.PREF_APPEND_HTTP_PROXY) && !proxyAuthActive) {
                 builder.setHttpProxy(ProxyInfo.buildDirectProxy(LOOPBACK, SettingsManager.getHttpPort()))
             }
         }
