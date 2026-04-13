@@ -414,10 +414,11 @@ object V2rayConfigManager {
                 inbound2.tag = EConfigType.HTTP.name.lowercase()
                 inbound2.port = SettingsManager.getHttpPort()
                 inbound2.protocol = EConfigType.HTTP.name.lowercase()
-                // HTTP inbound does not use SOCKS auth fields — clear them to avoid
-                // browsers being prompted for credentials when using the HTTP proxy
+                // HTTP inbound inherits auth/accounts from inbound1 copy.
+                // auth field is not meaningful for HTTP protocol in xray-core,
+                // but accounts are used for Basic Auth — keep them so the HTTP
+                // proxy also requires credentials and cannot be probed without auth.
                 inbound2.settings?.auth = null
-                inbound2.settings?.accounts = null
                 v2rayConfig.inbounds.add(inbound2)
             }
 
