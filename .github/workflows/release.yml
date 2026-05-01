@@ -86,7 +86,7 @@ jobs:
 
       - name: Decode Keystore
         id: android_keystore
-        uses: timheuer/base64-to-file@v1.2.4
+        uses: timheuer/base64-to-file@v2.0.0
         with:
           fileName: "android_keystore.jks"
           encodedString: ${{ secrets.APP_KEYSTORE_BASE64 }}
